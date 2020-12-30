@@ -68,8 +68,8 @@ class Net(nn.Module):
         self.add_mean = ops.MeanShift(255, sign=1)
 
         head = [
-            ops.DownBlock(opt.scale),
-            nn.Conv2d(3*opt.scale**2, opt.num_channels, 3, 1, 1)
+            # ops.DownBlock(opt.scale),
+            nn.Conv2d(3, opt.num_channels, 3, 1, 1)
         ]
 
         body = list()

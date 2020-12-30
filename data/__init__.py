@@ -27,6 +27,9 @@ def generate_loader(phase, opt):
     elif "JPEG" in opt.dataset: # JPEG benchmark datasets
         mname = importlib.import_module("data.benchmark")
         cname = "BenchmarkSR"
+    elif "UCLand" in opt.dataset:
+        mname = importlib.import_module("data.ucland")
+        cname = "UCLand"
     else:
         raise ValueError("Unsupported dataset: {}".format(opt.dataset))
 
@@ -44,38 +47,44 @@ def generate_loader(phase, opt):
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(self, phase, opt):
         print("Load dataset... (phase: {}, len: {})".format(phase, len(self.HQ_paths)))
-        self.HQ, self.LQ = list(), list()
-        for HQ_path, LQ_path in zip(self.HQ_paths, self.LQ_paths):
-            self.HQ += [io.imread(HQ_path)]
-            self.LQ += [io.imread(LQ_path)]
+        # self.HQ, self.LQ = list(), list()
+        # for HQ_path, LQ_path in zip(self.HQ_paths, self.LQ_paths):
+        #     self.HQ += [io.imread(HQ_path)]
+        #     self.LQ += [io.imread(LQ_path)]
 
         self.phase = phase
         self.opt = opt
 
-    def __getitem__(self, index):
-        # follow the setup of EDSR-pytorch
-        if self.phase == "train":
-            index = index % len(self.HQ)
+    def im2tensor(self, im):
+        np_t = np.ascontiguousarray(im.transpose((2, 0, 1)))
+        tensor = torch.from_numpy(np_t).float()
+        return tensor
 
-        def im2tensor(im):
-            np_t = np.ascontiguousarray(im.transpose((2, 0, 1)))
-            tensor = torch.from_numpy(np_t).float()
-            return tensor
-
-        HQ, LQ = self.HQ[index], self.LQ[index]
+    def get_image(self, idx):
+        HQ = io.imread(self.HQ_paths[idx])
+        LQ = io.imread(self.LQ_paths[idx])
         if len(HQ.shape) < 3:
             HQ = color.gray2rgb(HQ)
         if len(LQ.shape) < 3:
             LQ = color.gray2rgb(LQ)
+        return HQ, LQ
+
+    def __getitem__(self, index):
+        # follow the setup of EDSR-pytorch
+        if self.phase == "train":
+            index = index % len(self.HQ_paths)
+
+        HQ, LQ = self.get_image(index)
 
         if self.phase == "train":
             inp_scale = HQ.shape[0] // LQ.shape[0]
             HQ, LQ = utils.crop(HQ, LQ, self.opt.patch_size, inp_scale)
             HQ, LQ = utils.flip_and_rotate(HQ, LQ)
-        return im2tensor(HQ), im2tensor(LQ)
+
+        return self.im2tensor(HQ), self.im2tensor(LQ)
 
     def __len__(self):
         # follow the setup of EDSR-pytorch
         if self.phase == "train":
-            return (1000 * self.opt.batch_size) // len(self.HQ) * len(self.HQ)
-        return len(self.HQ)
+            return (1000 * self.opt.batch_size) // len(self.HQ_paths) * len(self.HQ_paths)
+        return len(self.HQ_paths)

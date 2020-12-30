@@ -37,9 +37,9 @@ def parse_args():
     parser.add_argument("--decay", type=str, default="200-400-600")
     parser.add_argument("--gamma", type=int, default=0.5)
     parser.add_argument("--patch_size", type=int, default=48)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--max_steps", type=int, default=700000)
-    parser.add_argument("--eval_steps", type=int, default=1000)
+    parser.add_argument("--eval_steps", type=int, default=100)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--gclip", type=int, default=0)
 

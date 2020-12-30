@@ -56,19 +56,18 @@ class Solver():
             LR = inputs[1].to(self.dev)
 
             # match the resolution of (LR, HR) due to CutBlur
-            if HR.size() != LR.size():
-                scale = HR.size(2) // LR.size(2)
-                LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
+            # if HR.size() != LR.size():
+            #     scale = HR.size(2) // LR.size(2)
+            #     LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
 
-            HR, LR, mask, aug = augments.apply_augment(
-                HR, LR,
-                opt.augs, opt.prob, opt.alpha,
-                opt.aux_alpha, opt.aux_alpha, opt.mix_p
-            )
-
+            # HR, LR, mask, aug = augments.apply_augment(
+            #     HR, LR,
+            #     opt.augs, opt.prob, opt.alpha,
+            #     opt.aux_alpha, opt.aux_alpha, opt.mix_p
+            # )
             SR = self.net(LR)
-            if aug == "cutout":
-                SR, HR = SR*mask, HR*mask
+            # if aug == "cutout":
+            #     SR, HR = SR*mask, HR*mask
 
             loss = self.loss_fn(SR, HR)
             self.optim.zero_grad()
@@ -82,6 +81,10 @@ class Solver():
 
             if (step+1) % opt.eval_steps == 0:
                 self.summary_and_save(step)
+
+            if (step+1) % 20 == 0:
+                _max_steps =  self.opt.max_steps//1000
+                print(f"[{step}K/{_max_steps}K] {loss.data:.2f} ")
 
     def summary_and_save(self, step):
         step, max_steps = (step+1)//1000, self.opt.max_steps//1000
@@ -115,9 +118,9 @@ class Solver():
             LR = inputs[1].to(self.dev)
 
             # match the resolution of (LR, HR) due to CutBlur
-            if HR.size() != LR.size():
-                scale = HR.size(2) // LR.size(2)
-                LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
+            # if HR.size() != LR.size():
+            #     scale = HR.size(2) // LR.size(2)
+            #     LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
 
             SR = self.net(LR).detach()
             HR = HR[0].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
