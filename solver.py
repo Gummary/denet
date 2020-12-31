@@ -26,7 +26,7 @@ class Solver():
 
         self.dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.net = module.Net(opt).to(self.dev)
-        self.print_net_summart()
+        summary(self.net, torch.zeros(4, 3, 64, 64).to(self.dev))
 
         if opt.pretrain:
             self.load(opt.pretrain)
@@ -49,15 +49,6 @@ class Solver():
         self.t1, self.t2 = None, None
         self.best_psnr, self.best_step = 0, 0
 
-    def print_net_summart(self):
-        df, df_total = summary(self.net, (4, 16, 64, 64), print_summary=False)
-        option = pd.option_context(
-            "display.max_rows", 600,
-            "display.max_columns", 10,
-            "display.float_format", pd.io.formats.format.EngFormatter(use_eng_prefix=True)
-        )
-        with option:
-            logger.info(df.replace(np.nan, "-"))
 
     def fit(self):
         opt = self.opt
@@ -97,7 +88,7 @@ class Solver():
             self.optim.step()
             self.scheduler.step()
 
-            if (step+1) % 1000 == 0:
+            if (step+1) % opt.log_intervals == 0:
                 _step, _max_steps = (step+1)//1000, self.opt.max_steps//1000
                 logger.info(f"[{_step}K/{_max_steps}K] {loss.data:.2f}")
 
@@ -116,9 +107,8 @@ class Solver():
 
         curr_lr = self.scheduler.get_last_lr()
         eta = (self.t2-self.t1) * (max_steps-step) / 3600
-        logger.info("[{}K/{}K] {:.2f} (Best: {:.2f} @ {}K step) LR: {}, ETA: {:.1f} hours"
-            .format(step, max_steps, psnr, self.best_psnr, self.best_step,
-             curr_lr, eta))
+        logger.info(f"[{step}K/{max_steps}K] {psnr:.2f} (Best: {self.best_step:.2f} "
+                    f"@ {self.best_step}K step) LR: {curr_lr} ETA {eta} Hours")
 
         self.t1 = time.time()
 

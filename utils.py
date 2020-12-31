@@ -69,7 +69,7 @@ def calculate_psnr(img1, img2):
 
 
 def create_logger(opt):
-    format_str = '%(asctime)s - %(name)s - %(levelness)s - %(message)s'
+    format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(format=format_str, level=logging.INFO)
     logger = logging.getLogger(__name__)
 
