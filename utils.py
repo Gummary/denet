@@ -74,7 +74,7 @@ def create_logger(opt):
     logger = logging.getLogger(__name__)
 
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    log_file = osp.join(opt.output, '{}.log'.format(timestamp))
+    log_file = osp.join(opt.save_root, '{}.log'.format(timestamp))
 
     logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(log_file, 'w')
@@ -83,6 +83,7 @@ def create_logger(opt):
     logging.getLogger('').addHandler(file_handler)
 
     return logger
+
 
 def mkdir_or_exist(dir_name, mode=0o777):
     if dir_name == '':
