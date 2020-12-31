@@ -6,3 +6,4 @@ pt/
 .vscode/
 venv/
 output/
+.idea/
