@@ -3,16 +3,21 @@ CutBlur
 Copyright 2020-present NAVER corp.
 MIT license
 """
+import os
 import json
-import importlib
+import utils
 import torch
+import importlib
 from option import get_option
 from solver import Solver
-from utils import create_logger
 
 def main():
     opt = get_option()
-    logger = create_logger(opt)
+    if opt.save_result:
+        save_root = os.path.join(opt.save_root, opt.dataset)
+        utils.mkdir_or_exist(save_root)
+    utils.mkdir_or_exist(opt.ckpt_root)
+    logger = utils.create_logger(opt)
     torch.manual_seed(opt.seed)
 
     module = importlib.import_module("model.{}".format(opt.model.lower()))

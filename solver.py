@@ -45,10 +45,6 @@ class Solver():
             self.train_loader = generate_loader("train", opt)
         self.test_loader = generate_loader("test", opt)
 
-        if opt.save_result:
-            save_root = os.path.join(opt.save_root, opt.dataset)
-            utils.mkdir_or_exist(save_root)
-        utils.mkdir_or_exist(self.opt.ckpt_root)
 
         self.t1, self.t2 = None, None
         self.best_psnr, self.best_step = 0, 0
