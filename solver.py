@@ -12,6 +12,13 @@ import torch.nn.functional as F
 import utils
 import augments
 from data import generate_loader
+from torchsummaryX import summary
+import pandas as pd
+import numpy as np
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Solver():
     def __init__(self, module, opt):
@@ -19,7 +26,7 @@ class Solver():
 
         self.dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.net = module.Net(opt).to(self.dev)
-        print("# params:", sum(map(lambda x: x.numel(), self.net.parameters())))
+        self.print_net_summart()
 
         if opt.pretrain:
             self.load(opt.pretrain)
@@ -40,6 +47,16 @@ class Solver():
 
         self.t1, self.t2 = None, None
         self.best_psnr, self.best_step = 0, 0
+
+    def print_net_summart(self):
+        df, df_total = summary(self.net, (4, 16, 64, 64), print_summary=False)
+        option = pd.option_context(
+            "display.max_rows", 600,
+            "display.max_columns", 10,
+            "display.float_format", pd.io.formats.format.EngFormatter(use_eng_prefix=True)
+        )
+        with option:
+            logger.info(df.replace(np.nan, "-"))
 
     def fit(self):
         opt = self.opt
@@ -81,7 +98,7 @@ class Solver():
 
             if (step+1) % 1000 == 0:
                 _step, _max_steps = (step+1)//1000, self.opt.max_steps//1000
-                print(f"[{_step}K/{_max_steps}K] {loss.data:.2f}")
+                logger.info(f"[{_step}K/{_max_steps}K] {loss.data:.2f}")
 
             if (step+1) % opt.eval_steps == 0:
                 self.summary_and_save(step)
@@ -96,9 +113,9 @@ class Solver():
             self.best_psnr, self.best_step = psnr, step
             self.save(psnr)
 
-        curr_lr = self.scheduler.get_lr()[0]
+        curr_lr = self.scheduler.get_last_lr()
         eta = (self.t2-self.t1) * (max_steps-step) / 3600
-        print("[{}K/{}K] {:.2f} (Best: {:.2f} @ {}K step) LR: {}, ETA: {:.1f} hours"
+        logger.info("[{}K/{}K] {:.2f} (Best: {:.2f} @ {}K step) LR: {}, ETA: {:.1f} hours"
             .format(step, max_steps, psnr, self.best_psnr, self.best_step,
              curr_lr, eta))
 
