@@ -77,13 +77,24 @@ def make_template(opt):
         opt.res_scale = 1.0
         opt.batch_size = 64
         opt.decay = "400"
+    if "MIRNET" in opt.model:
+        opt.input_channels = 3
+        opt.output_channels = 3
+        opt.num_features = 64
+        opt.num_rrg = 2
+        opt.num_mrb = 3
+        opt.num_branch = 3
+        opt.width = 2
+        opt.stride = 2
+        opt.bias = False
+        opt.decay = "200-400-600-800"
 
     # training setup
     if "DN" in opt.dataset or "JPEG" in opt.dataset:
         opt.max_steps = 1000000
         opt.decay = "300-550-800"
     if "RealSR" in opt.dataset:
-        opt.patch_size *= opt.scale # identical (LR, HR) resolution
+        opt.patch_size *= opt.scale  # identical (LR, HR) resolution
 
     # evaluation setup
     opt.crop = 6 if "DIV2K" in opt.dataset else 0
