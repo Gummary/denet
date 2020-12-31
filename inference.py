@@ -13,6 +13,7 @@ import skimage.color as color
 import torch
 import torch.nn.functional as F
 import option
+from utils import mkdir_or_exist
 
 def im2tensor(im):
     np_t = np.ascontiguousarray(im.transpose((2, 0, 1)))
@@ -22,7 +23,7 @@ def im2tensor(im):
 
 @torch.no_grad()
 def main(opt):
-    os.makedirs(opt.save_root, exist_ok=True)
+    mkdir_or_exist(opt.save_root)
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     module = importlib.import_module("model.{}".format(opt.model.lower()))

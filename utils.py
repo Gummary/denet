@@ -3,6 +3,7 @@ CutBlur
 Copyright 2020-present NAVER corp.
 MIT license
 """
+import os
 import os.path as osp
 import time
 import random
@@ -82,3 +83,9 @@ def create_logger(opt):
     logging.getLogger('').addHandler(file_handler)
 
     return logger
+
+def mkdir_or_exist(dir_name, mode=0o777):
+    if dir_name == '':
+        return
+    dir_name = osp.expanduser(dir_name)
+    os.makedirs(dir_name, mode=mode, exist_ok=True)

@@ -45,6 +45,11 @@ class Solver():
             self.train_loader = generate_loader("train", opt)
         self.test_loader = generate_loader("test", opt)
 
+        if opt.save_result:
+            save_root = os.path.join(opt.save_root, opt.dataset)
+            utils.mkdir_or_exist(save_root)
+        utils.mkdir_or_exist(self.opt.ckpt_root)
+
         self.t1, self.t2 = None, None
         self.best_psnr, self.best_step = 0, 0
 
@@ -126,9 +131,6 @@ class Solver():
         opt = self.opt
         self.net.eval()
 
-        if opt.save_result:
-            save_root = os.path.join(opt.save_root, opt.dataset)
-            os.makedirs(save_root, exist_ok=True)
 
         psnr = 0
         for i, inputs in enumerate(self.test_loader):
@@ -145,6 +147,7 @@ class Solver():
             SR = SR[0].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
 
             if opt.save_result:
+                save_root = os.path.join(opt.save_root, opt.dataset)
                 save_path = os.path.join(save_root, "{:04d}.png".format(i+1))
                 io.imsave(save_path, SR)
 
@@ -190,7 +193,6 @@ class Solver():
                 )
 
     def save(self, psnr):
-        os.makedirs(self.opt.ckpt_root, exist_ok=True)
         save_path = os.path.join(self.opt.ckpt_root, f"best_{psnr:.3f}.pt")
         print(f"save best model to {save_path}")
         torch.save(self.net.state_dict(), save_path)
