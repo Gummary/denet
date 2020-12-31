@@ -17,6 +17,7 @@ def main():
         save_root = os.path.join(opt.save_root, opt.dataset)
         utils.mkdir_or_exist(save_root)
     utils.mkdir_or_exist(opt.ckpt_root)
+    utils.mkdir_or_exist(opt.save_root)
     logger = utils.create_logger(opt)
     torch.manual_seed(opt.seed)
 
