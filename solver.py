@@ -79,12 +79,13 @@ class Solver():
             self.optim.step()
             self.scheduler.step()
 
+            if (step+1) % 1000 == 0:
+                _step, _max_steps = (step+1)//1000, self.opt.max_steps//1000
+                print(f"[{_step}K/{_max_steps}K] {loss.data:.2f}")
+
             if (step+1) % opt.eval_steps == 0:
                 self.summary_and_save(step)
 
-            if (step+1) % 20 == 0:
-                _max_steps =  self.opt.max_steps//1000
-                print(f"[{step}K/{_max_steps}K] {loss.data:.2f} ")
 
     def summary_and_save(self, step):
         step, max_steps = (step+1)//1000, self.opt.max_steps//1000
@@ -93,7 +94,7 @@ class Solver():
 
         if psnr >= self.best_psnr:
             self.best_psnr, self.best_step = psnr, step
-            self.save(step)
+            self.save(psnr)
 
         curr_lr = self.scheduler.get_lr()[0]
         eta = (self.t2-self.t1) * (max_steps-step) / 3600
@@ -171,7 +172,8 @@ class Solver():
                     "Missing key {} in model's state_dict".format(name)
                 )
 
-    def save(self, step):
+    def save(self, psnr):
         os.makedirs(self.opt.ckpt_root, exist_ok=True)
-        save_path = os.path.join(self.opt.ckpt_root, str(step)+".pt")
+        save_path = os.path.join(self.opt.ckpt_root, f"best_{psnr:.3f}.pt")
+        print(f"save best model to {save_path}")
         torch.save(self.net.state_dict(), save_path)
