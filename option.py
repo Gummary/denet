@@ -88,7 +88,6 @@ def make_template(opt):
         opt.width = 2
         opt.stride = 2
         opt.bias = False
-        opt.decay = "200-400-600-800"
 
     # training setup
     if "DN" in opt.dataset or "JPEG" in opt.dataset:
