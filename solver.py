@@ -3,22 +3,21 @@ CutBlur
 Copyright 2020-present NAVER corp.
 MIT license
 """
+import logging
 import os
 import time
+
 import skimage.io as io
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import utils
-import augments
-from data import generate_loader
 from torchsummaryX import summary
-import pandas as pd
-import numpy as np
 
-import logging
+import utils
+from data import generate_loader
 
 logger = logging.getLogger(__name__)
+
 
 class Solver():
     def __init__(self, module, opt):
@@ -37,7 +36,7 @@ class Solver():
             betas=(0.9, 0.999), eps=1e-8
         )
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            self.optim, [1000*int(d) for d in opt.decay.split("-")],
+            self.optim, [1000 * int(d) for d in opt.decay.split("-")],
             gamma=opt.gamma,
         )
 
@@ -45,10 +44,8 @@ class Solver():
             self.train_loader = generate_loader("train", opt)
         self.test_loader = generate_loader("test", opt)
 
-
         self.t1, self.t2 = None, None
         self.best_psnr, self.best_step = 0, 0
-
 
     def fit(self):
         opt = self.opt
@@ -65,9 +62,9 @@ class Solver():
             LR = inputs[1].to(self.dev)
 
             # match the resolution of (LR, HR) due to CutBlur
-            # if HR.size() != LR.size():
-            #     scale = HR.size(2) // LR.size(2)
-            #     LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
+            if HR.size() != LR.size():
+                scale = HR.size(2) // LR.size(2)
+                LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
 
             # HR, LR, mask, aug = augments.apply_augment(
             #     HR, LR,
@@ -88,27 +85,28 @@ class Solver():
             self.optim.step()
             self.scheduler.step()
 
-            if (step+1) % opt.log_intervals == 0:
-                _step, _max_steps = (step+1)//1000, self.opt.max_steps//1000
+            if (step + 1) % opt.log_intervals == 0:
+                _step, _max_steps = (step + 1) // 1000, self.opt.max_steps // 1000
                 logger.info(f"[{_step}K/{_max_steps}K] {loss.data:.2f}")
 
-            if (step+1) % opt.eval_steps == 0:
+            if (step + 1) % opt.eval_steps == 0:
                 self.summary_and_save(step)
 
-
     def summary_and_save(self, step):
-        step, max_steps = (step+1)//1000, self.opt.max_steps//1000
         psnr = self.evaluate()
         self.t2 = time.time()
+
+        avg_time = (self.t2 - self.t1) / step
+        eta = avg_time * (self.opt.max_steps - step) / 3600
+        step, max_steps = (step + 1) // 1000, self.opt.max_steps // 1000
 
         if psnr >= self.best_psnr:
             self.best_psnr, self.best_step = psnr, step
             self.save(psnr)
 
         curr_lr = self.scheduler.get_last_lr()
-        eta = (self.t2-self.t1) * (max_steps-step) / 3600
-        logger.info(f"[{step}K/{max_steps}K] {psnr:.2f} (Best: {self.best_step:.2f} "
-                    f"@ {self.best_step}K step) LR: {curr_lr} ETA {eta} Hours")
+        logger.info(f"[{step}K/{max_steps}K] {psnr:.2f} (Best: {self.best_psnr:.2f} "
+                    f"@ {self.best_step}K step) LR: {curr_lr} ETA {eta:.2f} Hours")
 
         self.t1 = time.time()
 
@@ -117,16 +115,15 @@ class Solver():
         opt = self.opt
         self.net.eval()
 
-
         psnr = 0
         for i, inputs in enumerate(self.test_loader):
             HR = inputs[0].to(self.dev)
             LR = inputs[1].to(self.dev)
 
             # match the resolution of (LR, HR) due to CutBlur
-            # if HR.size() != LR.size():
-            #     scale = HR.size(2) // LR.size(2)
-            #     LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
+            if HR.size() != LR.size():
+                scale = HR.size(2) // LR.size(2)
+                LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
 
             SR = self.net(LR).detach()
             HR = HR[0].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
@@ -134,7 +131,7 @@ class Solver():
 
             if opt.save_result:
                 save_root = os.path.join(opt.save_root, opt.dataset)
-                save_path = os.path.join(save_root, "{:04d}.png".format(i+1))
+                save_path = os.path.join(save_root, "{:04d}.png".format(i + 1))
                 io.imsave(save_path, SR)
 
             HR = HR[opt.crop:-opt.crop, opt.crop:-opt.crop, :]
@@ -146,7 +143,7 @@ class Solver():
 
         self.net.train()
 
-        return psnr/len(self.test_loader)
+        return psnr / len(self.test_loader)
 
     def load(self, path):
         state_dict = torch.load(path, map_location=lambda storage, loc: storage)
@@ -171,7 +168,7 @@ class Solver():
                             "While copying the parameter named {}, "
                             "whose dimensions in the model are {} and "
                             "whose dimensions in the checkpoint are {}."
-                            .format(name, own_state[name].size(), param.size())
+                                .format(name, own_state[name].size(), param.size())
                         )
             else:
                 raise RuntimeError(
@@ -180,5 +177,5 @@ class Solver():
 
     def save(self, psnr):
         save_path = os.path.join(self.opt.ckpt_root, f"best_{psnr:.3f}.pt")
-        print(f"save best model to {save_path}")
+        logger.info(f"saving best model to {save_path}")
         torch.save(self.net.state_dict(), save_path)

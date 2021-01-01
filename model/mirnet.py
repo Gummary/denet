@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 from model.blurpool import BlurPool
-from model.ops import SALayer, CALayer, Upsampler
+from model.ops import SALayer, CALayer
 
 
 class SKFF(nn.Module):
@@ -257,7 +257,7 @@ class Net(nn.Module):
               range(opt.num_rrg)])
 
         self.tail = nn.Sequential(*[
-            Upsampler(scale=opt.scale, num_channels=opt.num_features),
+            # Upsampler(scale=opt.scale, num_channels=opt.num_features),
             nn.Conv2d(opt.num_features, opt.output_channels, kernel_size=3, padding=1, stride=1, bias=opt.bias)
         ])
 

@@ -5,6 +5,7 @@ MIT license
 """
 import argparse
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=1)
@@ -25,12 +26,12 @@ def parse_args():
     # dataset
     parser.add_argument("--dataset_root", type=str, default="")
     parser.add_argument("--dataset", type=str, default="DIV2K_SR")
-    parser.add_argument("--camera", type=str, default="all") # RealSR
+    parser.add_argument("--camera", type=str, default="all")  # RealSR
     parser.add_argument("--div2k_range", type=str, default="1-800/801-810")
-    parser.add_argument("--scale", type=int, default=4) # SR
-    parser.add_argument("--sigma", type=int, default=10) # DN
-    parser.add_argument("--quality", type=int, default=10) # DeJPEG
-    parser.add_argument("--type", type=int, default=1) # DeBlur
+    parser.add_argument("--scale", type=int, default=4)  # SR
+    parser.add_argument("--sigma", type=int, default=10)  # DN
+    parser.add_argument("--quality", type=int, default=10)  # DeJPEG
+    parser.add_argument("--type", type=int, default=1)  # DeBlur
 
     # training setups
     parser.add_argument("--lr", type=float, default=1e-4)
