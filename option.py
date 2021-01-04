@@ -39,6 +39,7 @@ def parse_args():
     parser.add_argument("--gamma", type=int, default=0.5)
     parser.add_argument("--patch_size", type=int, default=48)
     parser.add_argument("--batch_size", type=int, default=2)
+    parser.add_argument("--test_batch", type=int, default=2)
     parser.add_argument("--max_steps", type=int, default=700000)
     parser.add_argument("--eval_steps", type=int, default=1000)
     parser.add_argument("--log_intervals", type=int, default=100)
@@ -81,13 +82,18 @@ def make_template(opt):
     if "MIRNET" in opt.model:
         opt.input_channels = 3
         opt.output_channels = 3
-        opt.num_features = 64
+        opt.num_channels = 64
         opt.num_rrg = 2
         opt.num_mrb = 3
         opt.num_branch = 3
         opt.width = 2
         opt.stride = 2
         opt.bias = False
+
+    opt.with_dc = False
+    if "_DC" in opt.model:
+        opt.with_dc = True
+        opt.num_dc = 3
 
     # training setup
     if "DN" in opt.dataset or "JPEG" in opt.dataset:

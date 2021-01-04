@@ -3,13 +3,16 @@ CutBlur
 Copyright 2020-present NAVER corp.
 MIT license
 """
-import os
-import json
-import utils
-import torch
 import importlib
+import json
+import os
+
+import torch
+
+import utils
 from option import get_option
 from solver import Solver
+
 
 def main():
     opt = get_option()
@@ -20,8 +23,10 @@ def main():
     utils.mkdir_or_exist(opt.save_root)
     logger = utils.create_logger(opt)
     torch.manual_seed(opt.seed)
-
-    module = importlib.import_module("model.{}".format(opt.model.lower()))
+    if "_DC" in opt.model:
+        module = importlib.import_module("model.dynet")
+    else:
+        module = importlib.import_module("model.{}".format(opt.model.lower()))
 
     if not opt.test_only:
         print(json.dumps(vars(opt), indent=4))

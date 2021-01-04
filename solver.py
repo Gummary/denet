@@ -72,10 +72,18 @@ class Solver():
             #     opt.aux_alpha, opt.aux_alpha, opt.mix_p
             # )
             SR = self.net(LR)
-            # if aug == "cutout":
-            #     SR, HR = SR*mask, HR*mask
+            if isinstance(SR, (tuple, list)):
+                # if aug == "cutout":
+                #     HR = HR * mask
+                #     SR = [sr*mask for sr in SR]
+                loss = self.loss_fn(SR[0], HR)
+                for sr in SR[1:]:
+                    loss += self.loss_fn(sr, HR)
+            else:
+                # if aug == "cutout":
+                #     SR, HR = SR*mask, HR*mask
+                loss = self.loss_fn(SR, HR)
 
-            loss = self.loss_fn(SR, HR)
             self.optim.zero_grad()
             loss.backward()
 
@@ -125,7 +133,11 @@ class Solver():
                 scale = HR.size(2) // LR.size(2)
                 LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
 
-            SR = self.net(LR).detach()
+            SR = self.net(LR)
+            if isinstance(SR, (list, tuple)):
+                SR = SR[-1]
+
+            SR = SR.detach()
             HR = HR[0].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
             SR = SR[0].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
 

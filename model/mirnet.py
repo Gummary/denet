@@ -251,19 +251,23 @@ class Net(nn.Module):
 
     def __init__(self, opt):
         super().__init__()
-        self.head = nn.Conv2d(opt.input_channels, opt.num_features, kernel_size=3, padding=1, stride=1, bias=opt.bias)
+        self.head = nn.Conv2d(opt.input_channels, opt.num_channels, kernel_size=3, padding=1, stride=1, bias=opt.bias)
         self.body = nn.Sequential(
-            *[RRG(opt.num_features, opt.num_mrb, opt.num_branch, opt.width, opt.stride, opt.bias) for _ in
+            *[RRG(opt.num_channels, opt.num_mrb, opt.num_branch, opt.width, opt.stride, opt.bias) for _ in
               range(opt.num_rrg)])
 
         self.tail = nn.Sequential(*[
-            # Upsampler(scale=opt.scale, num_channels=opt.num_features),
-            nn.Conv2d(opt.num_features, opt.output_channels, kernel_size=3, padding=1, stride=1, bias=opt.bias)
+            # Upsampler(scale=opt.scale, num_channels=opt.num_channels),
+            nn.Conv2d(opt.num_channels, opt.output_channels, kernel_size=3, padding=1, stride=1, bias=opt.bias)
         ])
 
     def forward(self, x):
         x = self.head(x)
         residual = self.body(x)
-        out = x + residual
-        out = self.tail(out)
+        feat = residual + x
+        out = self.tail(feat)
+
+        if self.opt.with_dc:
+            return feat, out
+
         return out

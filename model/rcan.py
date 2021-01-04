@@ -81,4 +81,7 @@ class Net(nn.Module):
         x = self.tail(res)
         x = self.add_mean(x)
 
+        if self.opt.with_dc:
+            return res, x
+
         return x
