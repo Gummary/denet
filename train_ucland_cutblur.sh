@@ -20,4 +20,5 @@ python main.py \
     --save_root ./output/$1/$2 \
     --ckpt_root ./pt/$1/$2 \
     --augs cutblur \
-    --alpha 0.7
+    --alpha 0.7 \
+    --prob 0.5

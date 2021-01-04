@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+
 def apply_augment(
     im1, im2,
     augs, probs, alphas,
