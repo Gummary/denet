@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchsummaryX import summary
 
+import augments
 import utils
 from data import generate_loader
 
@@ -66,14 +67,14 @@ class Solver():
                 scale = HR.size(2) // LR.size(2)
                 LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
 
-            # HR, LR, mask, aug = augments.apply_augment(
-            #     HR, LR,
-            #     opt.augs, opt.prob, opt.alpha,
-            #     opt.aux_alpha, opt.aux_alpha, opt.mix_p
-            # )
+            HR, LR, mask, aug = augments.apply_augment(
+                HR, LR,
+                opt.augs, opt.prob, opt.alpha,
+                opt.aux_alpha, opt.aux_alpha, opt.mix_p
+            )
             SR = self.net(LR)
-            # if aug == "cutout":
-            #     SR, HR = SR*mask, HR*mask
+            if aug == "cutout":
+                SR, HR = SR * mask, HR * mask
 
             loss = self.loss_fn(SR, HR)
             self.optim.zero_grad()
