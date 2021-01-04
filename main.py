@@ -3,13 +3,16 @@ CutBlur
 Copyright 2020-present NAVER corp.
 MIT license
 """
-import os
-import json
-import utils
-import torch
 import importlib
+import json
+import os
+
+import torch
+
+import utils
 from option import get_option
 from solver import Solver
+
 
 def main():
     opt = get_option()
@@ -24,7 +27,7 @@ def main():
     module = importlib.import_module("model.{}".format(opt.model.lower()))
 
     if not opt.test_only:
-        print(json.dumps(vars(opt), indent=4))
+        logger.info(json.dumps(vars(opt), indent=4))
 
     solver = Solver(module, opt)
     if opt.test_only:
