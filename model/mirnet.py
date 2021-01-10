@@ -260,6 +260,7 @@ class Net(nn.Module):
             # Upsampler(scale=opt.scale, num_channels=opt.num_channels),
             nn.Conv2d(opt.num_channels, opt.output_channels, kernel_size=3, padding=1, stride=1, bias=opt.bias)
         ])
+        self.opt = opt
 
     def forward(self, x):
         x = self.head(x)
