@@ -74,15 +74,15 @@ class Solver():
             )
             SR = self.net(LR)
             if isinstance(SR, (tuple, list)):
-                # if aug == "cutout":
-                #     HR = HR * mask
-                #     SR = [sr*mask for sr in SR]
+                if aug == "cutout":
+                    HR = HR * mask
+                    SR = [sr * mask for sr in SR]
                 loss = self.loss_fn(SR[0], HR)
                 for sr in SR[1:]:
                     loss += self.loss_fn(sr, HR)
             else:
-                # if aug == "cutout":
-                #     SR, HR = SR*mask, HR*mask
+                if aug == "cutout":
+                    SR, HR = SR * mask, HR * mask
                 loss = self.loss_fn(SR, HR)
 
             self.optim.zero_grad()
