@@ -9,6 +9,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 from model import ops
+from model.adaptive_conv import AdaptiveConv2d
 
 
 def reshape():
@@ -19,10 +20,10 @@ def reshape():
     assert b.shape == (4, 4)
 
 
-class DynamicConv(nn.Module):
+class PixelConv(nn.Module):
     # Generate pixel kernel  (3*k*k)xHxW
     def __init__(self, in_feats, out_feats=3, rate=4, ksize=3, scale=1):
-        super(DynamicConv, self).__init__()
+        super(PixelConv, self).__init__()
         self.in_feats = in_feats
         self.padding = (ksize - 1) // 2
         self.ksize = ksize
@@ -110,7 +111,7 @@ class DynamicConv(nn.Module):
         return x_offset
 
 
-class DynamicBlock(nn.Module):
+class _DynamicBlock(nn.Module):
 
     def __init__(self, in_channels, num_channels, scale=1):
         super().__init__()
@@ -127,7 +128,7 @@ class DynamicBlock(nn.Module):
         edge_conv.append(nn.Conv2d(16, 3, kernel_size=3, stride=1, padding=1))
         self.edge_conv = nn.Sequential(*edge_conv)
 
-        self.dynamic_conv = DynamicConv(num_channels * 2, scale=scale)
+        self.dynamic_conv = PixelConv(num_channels * 2, scale=scale)
 
     def forward(self, feat, img):
         img_feat = self.image_conv(img)
@@ -139,6 +140,49 @@ class DynamicBlock(nn.Module):
         return edge + dynamic_feat
 
 
+class DynamicBlock(nn.Module):
+
+    def __init__(self, in_channels, out_channels, reduction=1, eps=0.1):
+        super().__init__()
+
+        self.eps = eps
+
+        self.conv_mid = nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1)
+
+        self.param_adapter = nn.Sequential(
+            nn.Conv2d(3, 16, 3, stride=1, padding=1),
+            nn.Conv2d(16, 32, 3, stride=1, padding=1),
+            nn.Conv2d(32, in_channels, 3, stride=1, padding=1),
+            nn.PReLU(),
+            nn.Conv2d(in_channels, in_channels, 3, 2),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1))
+
+        # Parameter factorization
+        self.conv1x1_U = nn.Conv2d(in_channels, in_channels // reduction, 1, 1)
+        self.conv1x1_V = nn.Conv2d(in_channels // reduction, in_channels, 1, 1)
+
+        self.conv1x1_out = nn.Conv2d(in_channels, out_channels, 1, stride=1, padding=0)
+
+    def forward(self, feat, x):
+        theta = self.param_adapter(x)
+
+        mid_feat = self.conv_mid(feat)
+        dynamic_feat = self.conv1x1_U(mid_feat)
+        dynamic_conv = AdaptiveConv2d(dynamic_feat.size(0) * dynamic_feat.size(1),
+                                      dynamic_feat.size(0) * dynamic_feat.size(1),
+                                      5, padding=theta.size(2) // 2,
+                                      groups=dynamic_feat.size(0) * dynamic_feat.size(1), bias=False)
+        dynamic_feat = dynamic_conv(input=dynamic_feat, dynamic_weight=theta)
+        feat_delta = self.conv1x1_V(dynamic_feat)
+
+        feat_delta = self.conv1x1_out(feat_delta)
+
+        return x * (1 + self.eps * torch.tanh(feat_delta))
+
+
 class Net(nn.Module):
 
     def __init__(self, opt):
@@ -146,7 +190,7 @@ class Net(nn.Module):
 
         backbone = opt.model.split("_")[0].lower()
         self.backbone = importlib.import_module(f"model.{backbone}").Net(opt)
-        self.dynamicBlocks = nn.ModuleList([DynamicBlock(3, opt.num_channels) for _ in range(opt.num_dc)])
+        self.dynamicBlocks = nn.ModuleList([DynamicBlock(opt.num_channels, 3) for _ in range(opt.num_dc)])
         self.feat_upsampler = ops.Upsampler(opt.num_channels, scale=opt.scale)
         self.opt = opt
 
@@ -158,7 +202,7 @@ class Net(nn.Module):
             feat = self.feat_upsampler(feat)
 
         for dc in self.dynamicBlocks:
-            x = dc(feat, x)
+            out = dc(feat, outputs[-1])
             outputs.append(out)
 
         return outputs
