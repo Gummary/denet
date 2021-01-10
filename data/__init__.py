@@ -3,14 +3,15 @@ CutBlur
 Copyright 2020-present NAVER corp.
 MIT license
 """
-import os
-import glob
 import importlib
+
 import numpy as np
-import skimage.io as io
 import skimage.color as color
+import skimage.io as io
 import torch
+
 import utils
+
 
 def generate_loader(phase, opt):
     cname = opt.dataset.replace("_", "")
@@ -34,7 +35,7 @@ def generate_loader(phase, opt):
         raise ValueError("Unsupported dataset: {}".format(opt.dataset))
 
     kwargs = {
-        "batch_size": opt.batch_size if phase == "train" else 1,
+        "batch_size": opt.batch_size if phase == "train" else opt.test_batch,
         "num_workers": opt.num_workers if phase == "train" else 0,
         "shuffle": phase == "train",
         "drop_last": phase == "train",

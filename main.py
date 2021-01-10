@@ -23,8 +23,10 @@ def main():
     utils.mkdir_or_exist(opt.save_root)
     logger = utils.create_logger(opt)
     torch.manual_seed(opt.seed)
-
-    module = importlib.import_module("model.{}".format(opt.model.lower()))
+    if "_DC" in opt.model:
+        module = importlib.import_module("model.dynet")
+    else:
+        module = importlib.import_module("model.{}".format(opt.model.lower()))
 
     if not opt.test_only:
         logger.info(json.dumps(vars(opt), indent=4))
