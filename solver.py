@@ -160,7 +160,7 @@ class Solver():
 
         self.net.train()
 
-        return psnr / len(self.test_loader)
+        return psnr / len(self.test_loader.dataset)
 
     def load(self, path):
         state_dict = torch.load(path, map_location=lambda storage, loc: storage)
