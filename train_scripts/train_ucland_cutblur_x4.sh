@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# != 2 ]; then
-  echo "USAGE: $0 NET EXPName"
+if [ $# < 2 ]; then
+  echo "USAGE: $0 NET EXPName [ARGS]"
   echo " e.g.: $0 RCAN exp1"
   exit 1
 fi
@@ -20,4 +20,5 @@ python main.py \
 --ckpt_root ./pt/$1/$2 \
 --augs cutblur \
 --alpha 0.7 \
---prob 0.5
+--prob 0.5 \
+"${@:3}"

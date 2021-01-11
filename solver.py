@@ -128,7 +128,7 @@ class Solver():
         for i, inputs in enumerate(self.test_loader):
             HR = inputs[0].to(self.dev)
             LR = inputs[1].to(self.dev)
-            ORI_LR = LR.clone().detch()
+            ORI_LR = LR.clone().detach()
 
             # match the resolution of (LR, HR) due to CutBlur
             if HR.size() != LR.size():
