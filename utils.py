@@ -9,7 +9,7 @@ import time
 import random
 import numpy as np
 import logging
-import cv2
+import skimage.io as io
 import torch
 import torch.nn.functional as F
 
@@ -141,4 +141,4 @@ def save_batch_hr_lr(batch_gt_hr, batch_pred_hr, batch_lr, file_name, rgb_range=
         width_end = gt_hr_width * 4
         grid_image[height_begin:height_end, width_begin:width_end, :] = pred_hr_image
 
-    cv2.imwrite(file_name, grid_image)
+    io.imsave(file_name, grid_image)
