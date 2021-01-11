@@ -9,6 +9,9 @@ import time
 import random
 import numpy as np
 import logging
+import cv2
+import torch
+import torch.nn.functional as F
 
 
 def crop(HQ, LQ, psize, scale=4):
@@ -90,3 +93,52 @@ def mkdir_or_exist(dir_name, mode=0o777):
         return
     dir_name = osp.expanduser(dir_name)
     os.makedirs(dir_name, mode=mode, exist_ok=True)
+
+def tensor2image(tensor: torch.Tensor, min_max=(0, 1), out_type=np.uint8):
+    tensor = tensor.clamp_(*min_max).round().detach().cpu()
+    tensor = (tensor - min_max[0]) / (min_max[1] - min_max[0])
+    img_np = tensor.numpy()
+    img_np = np.transpose(img_np[[2, 1, 0], :, :], (1, 2, 0))
+
+    return (img_np * 255.0).round().astype(out_type)
+
+def save_batch_hr_lr(batch_gt_hr, batch_pred_hr, batch_lr, file_name, rgb_range=255.0):
+    batch_size = batch_gt_hr.size(0)
+    gt_hr_height = batch_gt_hr.size(2)
+    gt_hr_width = batch_gt_hr.size(3)
+
+    lr_height = batch_lr.size(2)
+    lr_width = batch_lr.size(3)
+
+    scale = gt_hr_height // lr_height
+
+    grid_image = np.zeros((batch_size * gt_hr_height,
+                           4 * gt_hr_width,
+                           3))
+
+    batch_bicubic_hr = F.interpolate(batch_lr, scale_factor=scale, mode='bicubic', align_corners=True)
+    min_max = (0., rgb_range)
+    for i in range(batch_size):
+        gt_hr_image = tensor2image(batch_gt_hr[i], min_max)
+        pred_hr_image = tensor2image(batch_pred_hr[i], min_max)
+        bicubic_hr_image = tensor2image(batch_bicubic_hr[i], min_max)
+        lr_image = tensor2image(batch_lr[i], min_max)
+        height_begin = gt_hr_height * i
+        height_end = gt_hr_height * (i + 1)
+        width_begin = 0
+        width_end = width_begin + lr_width
+        grid_image[height_begin:height_begin + lr_height, width_begin:width_end, :] = lr_image
+
+        width_begin = gt_hr_width
+        width_end = gt_hr_width * 2
+        grid_image[height_begin:height_end, width_begin:width_end, :] = gt_hr_image
+
+        width_begin = gt_hr_width * 2
+        width_end = gt_hr_width * 3
+        grid_image[height_begin:height_end, width_begin:width_end, :] = bicubic_hr_image
+
+        width_begin = gt_hr_width * 3
+        width_end = gt_hr_width * 4
+        grid_image[height_begin:height_end, width_begin:width_end, :] = pred_hr_image
+
+    cv2.imwrite(file_name, grid_image)

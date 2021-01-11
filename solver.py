@@ -128,6 +128,7 @@ class Solver():
         for i, inputs in enumerate(self.test_loader):
             HR = inputs[0].to(self.dev)
             LR = inputs[1].to(self.dev)
+            ORI_LR = LR.clone().detch()
 
             # match the resolution of (LR, HR) due to CutBlur
             if HR.size() != LR.size():
@@ -139,20 +140,23 @@ class Solver():
                 SR = SR[-1]
 
             SR = SR.detach()
-            HR = HR[0].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
-            SR = SR[0].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
+            # iter over batch
+            for i in range(HR.size(0)):
+                hr = HR[i].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
+                sr = SR[i].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
 
+
+                hr = hr[opt.crop:-opt.crop, opt.crop:-opt.crop, :]
+                sr = sr[opt.crop:-opt.crop, opt.crop:-opt.crop, :]
+                if opt.eval_y_only:
+                    hr = utils.rgb2ycbcr(hr)
+                    sr = utils.rgb2ycbcr(sr)
+                psnr += utils.calculate_psnr(hr, sr)
             if opt.save_result:
                 save_root = os.path.join(opt.save_root, opt.dataset)
                 save_path = os.path.join(save_root, "{:04d}.png".format(i + 1))
-                io.imsave(save_path, SR)
-
-            HR = HR[opt.crop:-opt.crop, opt.crop:-opt.crop, :]
-            SR = SR[opt.crop:-opt.crop, opt.crop:-opt.crop, :]
-            if opt.eval_y_only:
-                HR = utils.rgb2ycbcr(HR)
-                SR = utils.rgb2ycbcr(SR)
-            psnr += utils.calculate_psnr(HR, SR)
+                utils.save_batch_hr_lr(HR, SR, ORI_LR, save_path)
+                # io.imsave(save_path, SR)
 
         self.net.train()
 
