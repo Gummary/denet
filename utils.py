@@ -114,7 +114,8 @@ def save_batch_hr_lr(batch_gt_hr, batch_pred_hr, batch_lr, file_name, rgb_range=
 
     grid_image = np.zeros((batch_size * gt_hr_height,
                            4 * gt_hr_width,
-                           3))
+                           3), 
+                           dtype=np.uint8)
 
     batch_bicubic_hr = F.interpolate(batch_lr, scale_factor=scale, mode='bicubic', align_corners=True)
     min_max = (0., rgb_range)
