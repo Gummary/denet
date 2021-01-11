@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# < 2 ]; then
+if [ $# -lt 2 ]; then
   echo "USAGE: $0 NET EXPName [ARGS]"
   echo " e.g.: $0 RCAN exp1"
   exit 1
