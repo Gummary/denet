@@ -182,6 +182,54 @@ class DynamicBlock(nn.Module):
 
         return x * (1 + self.eps * torch.tanh(feat_delta))
 
+class DynamicBlock2(nn.Module):
+
+    def __init__(self, in_channels, out_channels, reduction=1, eps=0.1):
+        super().__init__()
+
+        self.eps = eps
+
+        self.img_conv = nn.Sequential(
+            nn.Conv2d(3, 16, 3, stride=1, padding=1),
+            nn.Conv2d(16, 32, 3, stride=1, padding=1),
+            nn.Conv2d(32, in_channels, 3, stride=1, padding=1),
+        )
+
+        self.feat_conv = nn.Sequential(
+            nn.Conv2d(in_channels*2, in_channels, 3, stride=1, padding=1),
+            nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1)
+        )
+
+        self.param_adapter = nn.Sequential(
+            nn.Conv2d(in_channels*2, in_channels, 1)
+            nn.Conv2d(in_channels, in_channels, 3, 2),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1))
+
+        self.out_conv = nn.Conv2d(in_channels, out_channels, 1, stride=1, padding=0)
+
+    def forward(self, feat, x):
+
+        oneshot_feat = self.img_conv(x)
+        feat = torch.cat((feat, oneshot_feat), dim=1)
+
+        theta = self.param_adapter(feat)
+
+        dynamic_feat = self.feat_conv(feat)
+        dynamic_conv = AdaptiveConv2d(dynamic_feat.size(0) * dynamic_feat.size(1),
+                                      dynamic_feat.size(0) * dynamic_feat.size(1),
+                                      5, padding=theta.size(2) // 2,
+                                      groups=dynamic_feat.size(0) * dynamic_feat.size(1), bias=False)
+        feat_delta = dynamic_conv(input=dynamic_feat, dynamic_weight=theta)
+
+        feat_delta = self.out_conv(feat_delta)
+
+        return x * (1 + self.eps * torch.tanh(feat_delta))
+
+
+
 
 class Net(nn.Module):
 
@@ -190,7 +238,7 @@ class Net(nn.Module):
 
         backbone = opt.model.split("_")[0].lower()
         self.backbone = importlib.import_module(f"model.{backbone}").Net(opt)
-        self.dynamicBlocks = nn.ModuleList([DynamicBlock(opt.num_channels, 3) for _ in range(opt.num_dc)])
+        self.dynamicBlocks = nn.ModuleList([DynamicBlock2(opt.num_channels, 3) for _ in range(opt.num_dc)])
         self.feat_upsampler = ops.Upsampler(opt.num_channels, scale=opt.scale)
         self.opt = opt
 
