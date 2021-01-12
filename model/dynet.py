@@ -201,7 +201,7 @@ class DynamicBlock2(nn.Module):
         )
 
         self.param_adapter = nn.Sequential(
-            nn.Conv2d(in_channels*2, in_channels, 1)
+            nn.Conv2d(in_channels*2, in_channels, 1),
             nn.Conv2d(in_channels, in_channels, 3, 2),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(in_channels, in_channels, 3, padding=1),
