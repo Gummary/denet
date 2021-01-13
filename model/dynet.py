@@ -10,6 +10,8 @@ from torch.autograd import Variable
 
 from model import ops
 from model.adaptive_conv import AdaptiveConv2d
+import os
+import skimage.io as io
 
 
 def reshape():
@@ -182,6 +184,7 @@ class DynamicBlock(nn.Module):
 
         return x * (1 + self.eps * torch.tanh(feat_delta))
 
+
 class DynamicBlock2(nn.Module):
 
     def __init__(self, in_channels, out_channels, reduction=1, eps=0.1):
@@ -196,12 +199,12 @@ class DynamicBlock2(nn.Module):
         )
 
         self.feat_conv = nn.Sequential(
-            nn.Conv2d(in_channels*2, in_channels, 3, stride=1, padding=1),
+            nn.Conv2d(in_channels * 2, in_channels, 3, stride=1, padding=1),
             nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1)
         )
 
         self.param_adapter = nn.Sequential(
-            nn.Conv2d(in_channels*2, in_channels, 1),
+            nn.Conv2d(in_channels * 2, in_channels, 1),
             nn.Conv2d(in_channels, in_channels, 3, 2),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(in_channels, in_channels, 3, padding=1),
@@ -211,7 +214,6 @@ class DynamicBlock2(nn.Module):
         self.out_conv = nn.Conv2d(in_channels, out_channels, 1, stride=1, padding=0)
 
     def forward(self, feat, x):
-
         oneshot_feat = self.img_conv(x)
         feat = torch.cat((feat, oneshot_feat), dim=1)
 
@@ -229,6 +231,56 @@ class DynamicBlock2(nn.Module):
         return x * (1 + self.eps * torch.tanh(feat_delta))
 
 
+class DynamicBlock3(nn.Module):
+
+    def __init__(self, in_channels, out_channels, reduction=1, eps=0.1):
+        super().__init__()
+
+        self.eps = eps
+
+        self.img_conv = nn.Sequential(
+            nn.Conv2d(3, 16, 3, stride=1, padding=1),
+            nn.Conv2d(16, 32, 3, stride=1, padding=1),
+            nn.Conv2d(32, 32, 3, stride=1, padding=1),
+        )
+
+        self.cat_conv = nn.Conv2d(in_channels+32, in_channels, 3, stride=1, padding=1)
+
+
+        self.feat_conv = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1),
+            nn.Conv2d(in_channels, in_channels, 3, stride=1, padding=1)
+        )
+
+        self.param_adapter = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, 2),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1))
+
+        self.out_conv = nn.Conv2d(in_channels, out_channels, 1, stride=1, padding=0)
+
+    def forward(self, feat, x):
+        oneshot_feat = self.img_conv(x)
+        cat_feat = torch.cat((feat, oneshot_feat), dim=1)
+        cat_feat = self.cat_conv(cat_feat)
+
+        theta = self.param_adapter(feat)
+
+        dynamic_feat = self.feat_conv(cat_feat)
+        dynamic_conv = AdaptiveConv2d(dynamic_feat.size(0) * dynamic_feat.size(1),
+                                      dynamic_feat.size(0) * dynamic_feat.size(1),
+                                      5, padding=theta.size(2) // 2,
+                                      groups=dynamic_feat.size(0) * dynamic_feat.size(1), bias=False)
+        feat_delta = dynamic_conv(input=dynamic_feat, dynamic_weight=theta)
+
+        feat = feat * (1 + self.eps * torch.tanh(feat_delta))
+
+
+        return self.out_conv(feat)
+
+
 
 
 class Net(nn.Module):
@@ -238,7 +290,7 @@ class Net(nn.Module):
 
         backbone = opt.model.split("_")[0].lower()
         self.backbone = importlib.import_module(f"model.{backbone}").Net(opt)
-        self.dynamicBlocks = nn.ModuleList([DynamicBlock2(opt.num_channels, 3) for _ in range(opt.num_dc)])
+        self.dynamicBlocks = nn.ModuleList([DynamicBlock3(opt.num_channels, 3) for _ in range(opt.num_dc)])
         self.feat_upsampler = ops.Upsampler(opt.num_channels, scale=opt.scale)
         self.opt = opt
 
@@ -249,8 +301,7 @@ class Net(nn.Module):
         if feat.size(2) != x.size(2):
             feat = self.feat_upsampler(feat)
 
-        for dc in self.dynamicBlocks:
+        for i, dc in enumerate(self.dynamicBlocks):
             out = dc(feat, outputs[-1])
             outputs.append(out)
-
         return outputs

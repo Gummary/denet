@@ -14,12 +14,11 @@ NET=$1_DC
 python main.py \
 --model $NET \
 --dataset UCLand \
---scale 4 \
+--scale 2 \
 --batch_size 2 \
 --max_steps 640000 \
 --decay 200-400-600 \
 --dataset_root dataset/UCMerced_LandUse/ \
 --save_root ./output/$NET/$2 \
 --ckpt_root ./pt/$NET/$2 \
---scale 2 \
 "${@:3}"

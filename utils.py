@@ -94,13 +94,15 @@ def mkdir_or_exist(dir_name, mode=0o777):
     dir_name = osp.expanduser(dir_name)
     os.makedirs(dir_name, mode=mode, exist_ok=True)
 
+
 def tensor2image(tensor: torch.Tensor, min_max=(0, 1), out_type=np.uint8):
     tensor = tensor.clamp_(*min_max).round().detach().cpu()
     tensor = (tensor - min_max[0]) / (min_max[1] - min_max[0])
     img_np = tensor.numpy()
-    img_np = np.transpose(img_np[[2, 1, 0], :, :], (1, 2, 0))
+    img_np = np.transpose(img_np, (1, 2, 0))
 
     return (img_np * 255.0).round().astype(out_type)
+
 
 def save_batch_hr_lr(batch_gt_hr, batch_pred_hr, batch_lr, file_name, rgb_range=255.0):
     batch_size = batch_gt_hr.size(0)
@@ -114,8 +116,8 @@ def save_batch_hr_lr(batch_gt_hr, batch_pred_hr, batch_lr, file_name, rgb_range=
 
     grid_image = np.zeros((batch_size * gt_hr_height,
                            4 * gt_hr_width,
-                           3), 
-                           dtype=np.uint8)
+                           3),
+                          dtype=np.uint8)
 
     batch_bicubic_hr = F.interpolate(batch_lr, scale_factor=scale, mode='bicubic', align_corners=True)
     min_max = (0., rgb_range)

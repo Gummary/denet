@@ -7,11 +7,11 @@ import logging
 import os
 import time
 
-import skimage.io as io
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchsummaryX import summary
+import skimage.io as io
 
 import augments
 import utils
@@ -145,7 +145,6 @@ class Solver():
                 hr = HR[i].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
                 sr = SR[i].clamp(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
 
-
                 hr = hr[opt.crop:-opt.crop, opt.crop:-opt.crop, :]
                 sr = sr[opt.crop:-opt.crop, opt.crop:-opt.crop, :]
                 if opt.eval_y_only:
@@ -161,6 +160,35 @@ class Solver():
         self.net.train()
 
         return psnr / len(self.test_loader.dataset)
+
+    @torch.no_grad()
+    def save_mid_result(self):
+        opt = self.opt
+        self.net.eval()
+
+        save_root = os.path.join(opt.save_root, opt.dataset)
+
+        for i, inputs in enumerate(self.test_loader):
+            HR = inputs[0].to(self.dev)
+            LR = inputs[1].to(self.dev)
+            ORI_LR = LR.clone().detach()
+
+            # match the resolution of (LR, HR) due to CutBlur
+            if HR.size() != LR.size():
+                scale = HR.size(2) // LR.size(2)
+                LR = F.interpolate(LR, scale_factor=scale, mode="nearest")
+
+            SR = self.net(LR)
+            if not isinstance(SR, (list, tuple)):
+                SR = [SR]
+
+            for idx, sr in enumerate(SR):
+                sr = sr[0]
+                save_path = os.path.join(save_root, f"{i}_{idx}_pred.jpg")
+                sr = sr.clamp_(0, 255).round().cpu().byte().permute(1, 2, 0).numpy()
+                # sr = sr[:, :, [2,1,0]]
+                io.imsave(save_path, sr)
+                print(f"Save mid result {i}")
 
     def load(self, path):
         state_dict = torch.load(path, map_location=lambda storage, loc: storage)

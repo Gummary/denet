@@ -21,5 +21,4 @@ python main.py \
 --dataset_root dataset/UCMerced_LandUse/ \
 --save_root ./output/$NET/$2 \
 --ckpt_root ./pt/$NET/$2 \
---scale 4 \
 "${@:3}"
